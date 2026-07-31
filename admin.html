@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Najmah Location Admin</title>
+<style>
+:root{
+  --bg:#07111f;--panel:#101b2d;--panel2:#16243a;--line:#2b405d;
+  --text:#fff;--muted:#b8c5d6;--green:#35d07f;--blue:#1677ff;
+  --red:#ff3b30;--amber:#ffc857
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;min-height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif
+}
+body{padding:18px 14px 40px}
+button,input{font:inherit}
+.app{width:min(760px,100%);margin:auto}
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:14px
+}
+h1{font-size:23px;line-height:1.2;margin:0}
+.back{
+  color:#fff;text-decoration:none;background:#21324b;border:1px solid var(--line);
+  padding:9px 12px;border-radius:11px;font-weight:800;white-space:nowrap
+}
+.notice{
+  background:rgba(255,200,87,.11);border:1px solid rgba(255,200,87,.45);
+  color:#ffe1a0;padding:12px 13px;border-radius:13px;font-size:14px;
+  line-height:1.45;margin-bottom:14px
+}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:14px;margin-bottom:14px;box-shadow:0 12px 30px rgba(0,0,0,.15)
+}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--panel2);padding:11px;border-radius:12px}
+.stat span{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}
+.stat strong{font-size:18px}
+label{display:block;color:var(--muted);font-size:13px;font-weight:750;margin:10px 0 6px}
+input{
+  width:100%;height:48px;border:2px solid #50647f;border-radius:13px;
+  background:#fff;color:#111;font-size:17px;font-weight:750;padding:0 12px;outline:none
+}
+input:focus{border-color:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+button{
+  min-height:46px;border:0;border-radius:12px;padding:9px 11px;
+  color:#fff;background:#21324b;font-weight:850;cursor:pointer
+}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--green);color:#052515}
+.blue{background:var(--blue)}
+.danger{background:#5e2024;color:#ffd7d9}
+.wide{grid-column:1/-1}
+.hint{font-size:13px;color:var(--muted);line-height:1.45;margin:10px 0 0}
+#message{
+  display:none;margin-top:11px;padding:10px 12px;border-radius:11px;
+  background:#16243a;border:1px solid var(--line);font-size:14px
+}
+#message.show{display:block}
+#message.good{border-color:rgba(53,208,127,.7);color:#a9f2ca}
+#message.bad{border-color:rgba(255,59,48,.7);color:#ffc0bc}
+.map-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:10px
+}
+.map-head h2{font-size:17px;margin:0}
+#selectedText{font-size:12px;color:var(--muted);text-align:right}
+#mapViewport{
+  max-height:66vh;overflow:auto;border-radius:13px;border:1px solid var(--line);
+  background:#02060d
+}
+#mapWrap{position:relative;width:100%}
+#mapImage{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+#adminPin{
+  position:absolute;width:15px;height:15px;border-radius:50%;
+  background:var(--red);border:3px solid #fff;transform:translate(-50%,-50%);
+  box-shadow:0 0 0 4px rgba(255,59,48,.25),0 0 13px rgba(255,59,48,.9);
+  display:none;pointer-events:none
+}
+#mapLoading{padding:32px;text-align:center;color:var(--muted)}
+.footer-note{font-size:12px;color:#8294aa;text-align:center;line-height:1.45}
+@media(max-width:500px){
+  body{padding:14px 10px 32px}
+  h1{font-size:19px}
+  .grid2,.actions{grid-template-columns:1fr}
+  .wide{grid-column:auto}
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="top">
+    <div>
+      <h1>Najmah Location Admin</h1>
+      <div style="color:var(--muted);font-size:13px;margin-top:4px">Add and update searchable locations</div>
+    </div>
+    <a class="back" href="index.html">Open System</a>
+  </div>
+
+  <div class="notice">
+    Changes made here are saved as a draft on this device. They become live only after
+    you download <b>locations.json</b> and replace the existing file in GitHub.
+  </div>
+
+  <section class="card stats">
+    <div class="stat"><span>Locations in current file</span><strong id="locationCount">—</strong></div>
+    <div class="stat"><span>Current status</span><strong id="draftStatus">Loading</strong></div>
+  </section>
+
+  <section class="card">
+    <label for="numberInput">Building number</label>
+    <input id="numberInput" inputmode="numeric" autocomplete="off" placeholder="Enter building number">
+
+    <div class="actions">
+      <button id="loadBtn">Load Existing Number</button>
+      <button id="gpsBtn" class="blue">Use Current GPS &amp; Place Marker</button>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label for="latInput">Latitude (optional)</label>
+        <input id="latInput" inputmode="decimal" placeholder="26.0000000">
+      </div>
+      <div>
+        <label for="lngInput">Longitude (optional)</label>
+        <input id="lngInput" inputmode="decimal" placeholder="50.0000000">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="placeGpsBtn">Place Marker from Coordinates</button>
+      <button id="clearGpsBtn">Clear GPS Coordinates</button>
+    </div>
+
+    <p class="hint">
+      Easiest method: enter the building number while standing at the location, then tap
+      <b>Use Current GPS &amp; Place Marker</b>. You can also tap the exact position on the map.
+    </p>
+    <div id="message"></div>
+  </section>
+
+  <section class="card">
+    <div class="map-head">
+      <h2>Tap the building position</h2>
+      <div id="selectedText">No point selected</div>
+    </div>
+    <div id="mapViewport">
+      <div id="mapLoading">Loading map…</div>
+      <div id="mapWrap" hidden>
+        <img id="mapImage" alt="Najmah Camp map">
+        <div id="adminPin"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <button id="saveBtn" class="primary wide">Add / Update Location</button>
+      <button id="deleteBtn" class="danger">Remove Location</button>
+      <button id="resetBtn">Discard Draft &amp; Reload Published File</button>
+      <button id="downloadBtn" class="blue wide">Download locations.json</button>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    Keep the downloaded filename exactly as <b>locations.json</b> when uploading it to GitHub.
+  </div>
+</main>
+
+<script>
+const DRAFT_KEY='najmah-location-admin-draft-v1';
+const numberInput=document.getElementById('numberInput');
+const latInput=document.getElementById('latInput');
+const lngInput=document.getElementById('lngInput');
+const mapImage=document.getElementById('mapImage');
+const mapWrap=document.getElementById('mapWrap');
+const mapLoading=document.getElementById('mapLoading');
+const adminPin=document.getElementById('adminPin');
+const selectedText=document.getElementById('selectedText');
+const locationCount=document.getElementById('locationCount');
+const draftStatus=document.getElementById('draftStatus');
+const message=document.getElementById('message');
+
+let publishedData=null;
+let data=null;
+let selectedPoint=null;
+
+function clone(value){return JSON.parse(JSON.stringify(value))}
+function normalizeNumber(value){
+  const arabic='٠١٢٣٤٥٦٧٨٩',persian='۰۱۲۳۴۵۶۷۸۹';
+  return value.trim()
+    .replace(/[٠-٩]/g,d=>String(arabic.indexOf(d)))
+    .replace(/[۰-۹]/g,d=>String(persian.indexOf(d)))
+    .replace(/[–—−ـ]/g,'-')
+    .replace(/\s+/g,'')
+    .replace(/-+/g,'-');
+}
+function showMessage(text,type='good'){
+  message.textContent=text;
+  message.className='show '+type;
+}
+function updateSummary(){
+  locationCount.textContent=Object.keys(data?.locations||{}).length;
+  draftStatus.textContent=localStorage.getItem(DRAFT_KEY)?'Draft saved':'Published';
+}
+function saveDraft(){
+  data.updatedAt=new Date().toISOString();
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(data));
+  updateSummary();
+}
+function setPoint(x,y){
+  x=Math.max(0,Math.min(100,Number(x)));
+  y=Math.max(0,Math.min(100,Number(y)));
+  selectedPoint={x:Number(x.toFixed(5)),y:Number(y.toFixed(5))};
+  adminPin.style.left=selectedPoint.x+'%';
+  adminPin.style.top=selectedPoint.y+'%';
+  adminPin.style.display='block';
+  selectedText.textContent=`Map point: ${selectedPoint.x}%, ${selectedPoint.y}%`;
+}
+function clearPoint(){
+  selectedPoint=null;
+  adminPin.style.display='none';
+  selectedText.textContent='No point selected';
+}
+function mapPercentFromLatLng(lat,lng){
+  const a=26.7218373,b=0.000197152306,c=-0.000277675911;
+  const d=50.0522509,e=0.000219347957,f=0.000302672834;
+  const det=(b*f)-(c*e);
+  const latDelta=lat-a,lngDelta=lng-d;
+  return {
+    x:((latDelta*f)-(c*lngDelta))/det,
+    y:((b*lngDelta)-(e*latDelta))/det
+  };
+}
+function validCoordinates(){
+  const lat=Number(latInput.value),lng=Number(lngInput.value);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return null;
+  if(lat<-90||lat>90||lng<-180||lng>180)return null;
+  return [lat,lng];
+}
+function placeFromCoordinates(){
+  const coords=validCoordinates();
+  if(!coords){showMessage('Enter valid latitude and longitude values.','bad');return}
+  const point=mapPercentFromLatLng(coords[0],coords[1]);
+  if(point.x<0||point.x>100||point.y<0||point.y>100){
+    showMessage('These coordinates appear to be outside the current camp map.','bad');
+    return;
+  }
+  setPoint(point.x,point.y);
+  showMessage('Marker placed from the GPS coordinates.');
+}
+function loadExisting(){
+  const number=normalizeNumber(numberInput.value);
+  if(!number){showMessage('Enter a building number first.','bad');return}
+  const points=data.locations[number];
+  if(!points?.length){showMessage(`${number} is not in the current file. Select its point to add it.`,'bad');return}
+  numberInput.value=number;
+  setPoint(points[0][0],points[0][1]);
+  const gps=data.exactCoordinates?.[number];
+  latInput.value=gps?gps[0]:'';
+  lngInput.value=gps?gps[1]:'';
+  showMessage(`${number} loaded. You can update its position.`);
+  document.getElementById('mapViewport').scrollTo({
+    top:Math.max(0,(selectedPoint.y/100)*mapImage.clientHeight-180),
+    behavior:'smooth'
+  });
+}
+function saveLocation(){
+  const number=normalizeNumber(numberInput.value);
+  if(!number){showMessage('Enter a building number first.','bad');return}
+  if(!selectedPoint){showMessage('Select the location on the map first.','bad');return}
+  const exists=Boolean(data.locations[number]);
+  if(exists&&!confirm(`${number} already exists. Replace its current map position?`))return;
+  data.locations[number]=[[selectedPoint.x,selectedPoint.y]];
+  data.exactCoordinates=data.exactCoordinates||{};
+  const coords=validCoordinates();
+  if(coords)data.exactCoordinates[number]=coords;
+  else delete data.exactCoordinates[number];
+  numberInput.value=number;
+  saveDraft();
+  showMessage(`${number} ${exists?'updated':'added'} in the draft. Download locations.json when finished.`);
+}
+function deleteLocation(){
+  const number=normalizeNumber(numberInput.value);
+  if(!number||!data.locations[number]){showMessage('Enter an existing building number first.','bad');return}
+  if(!confirm(`Remove ${number} from the location file?`))return;
+  delete data.locations[number];
+  delete data.exactCoordinates?.[number];
+  saveDraft();
+  clearPoint();
+  latInput.value='';
+  lngInput.value='';
+  showMessage(`${number} removed from the draft.`);
+}
+function useCurrentGps(){
+  if(!navigator.geolocation){showMessage('GPS is not available on this device.','bad');return}
+  const button=document.getElementById('gpsBtn');
+  button.disabled=true;
+  button.textContent='Getting GPS…';
+  navigator.geolocation.getCurrentPosition(
+    position=>{
+      const lat=position.coords.latitude,lng=position.coords.longitude;
+      latInput.value=lat.toFixed(7);
+      lngInput.value=lng.toFixed(7);
+      button.disabled=false;
+      button.textContent='Use Current GPS & Place Marker';
+      placeFromCoordinates();
+    },
+    error=>{
+      button.disabled=false;
+      button.textContent='Use Current GPS & Place Marker';
+      showMessage(`Unable to get GPS: ${error.message}`,'bad');
+    },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+}
+function downloadFile(){
+  data.updatedAt=new Date().toISOString();
+  const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='locations.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  showMessage('locations.json downloaded. Replace the old file in GitHub.');
+}
+function resetDraft(){
+  if(!confirm('Discard all changes saved on this device and reload the published file?'))return;
+  localStorage.removeItem(DRAFT_KEY);
+  data=clone(publishedData);
+  clearPoint();
+  numberInput.value='';
+  latInput.value='';
+  lngInput.value='';
+  updateSummary();
+  showMessage('Draft discarded. Published locations reloaded.');
+}
+async function loadFiles(){
+  try{
+    const [locationsResponse,indexResponse]=await Promise.all([
+      fetch('locations.json?ts='+Date.now(),{cache:'no-store'}),
+      fetch('index.html?ts='+Date.now(),{cache:'no-store'})
+    ]);
+    if(!locationsResponse.ok||!indexResponse.ok)throw new Error('Required files could not be loaded');
+    publishedData=await locationsResponse.json();
+    const indexText=await indexResponse.text();
+    const indexDocument=new DOMParser().parseFromString(indexText,'text/html');
+    const source=indexDocument.querySelector('#map')?.getAttribute('src');
+    if(!source)throw new Error('Map image was not found in index.html');
+    const draft=localStorage.getItem(DRAFT_KEY);
+    data=draft?JSON.parse(draft):clone(publishedData);
+    mapImage.src=source;
+    mapImage.onload=()=>{
+      mapLoading.hidden=true;
+      mapWrap.hidden=false;
+    };
+    updateSummary();
+    if(draft)showMessage('A saved draft was restored on this device.');
+  }catch(error){
+    console.error(error);
+    mapLoading.textContent='Unable to load the system files. Upload index.html, locations.json, and admin.html together.';
+    showMessage(error.message,'bad');
+  }
+}
+
+mapImage.addEventListener('click',event=>{
+  const rect=mapImage.getBoundingClientRect();
+  setPoint(((event.clientX-rect.left)/rect.width)*100,((event.clientY-rect.top)/rect.height)*100);
+});
+document.getElementById('loadBtn').onclick=loadExisting;
+document.getElementById('gpsBtn').onclick=useCurrentGps;
+document.getElementById('placeGpsBtn').onclick=placeFromCoordinates;
+document.getElementById('clearGpsBtn').onclick=()=>{
+  latInput.value='';
+  lngInput.value='';
+  showMessage('GPS coordinates cleared. Routing will use the map calibration.');
+};
+document.getElementById('saveBtn').onclick=saveLocation;
+document.getElementById('deleteBtn').onclick=deleteLocation;
+document.getElementById('downloadBtn').onclick=downloadFile;
+document.getElementById('resetBtn').onclick=resetDraft;
+numberInput.addEventListener('keydown',event=>{if(event.key==='Enter')loadExisting()});
+
+loadFiles();
+</script>
+</body>
+</html>
