@@ -347,16 +347,16 @@ function resetDraft(){
 }
 async function loadFiles(){
   try{
-    const [locationsResponse,indexResponse]=await Promise.all([
+    const [locationsResponse,mapResponse]=await Promise.all([
       fetch('locations.json?ts='+Date.now(),{cache:'no-store'}),
-      fetch('index.html?ts='+Date.now(),{cache:'no-store'})
+      fetch('map.html?ts='+Date.now(),{cache:'no-store'})
     ]);
-    if(!locationsResponse.ok||!indexResponse.ok)throw new Error('Required files could not be loaded');
+    if(!locationsResponse.ok||!mapResponse.ok)throw new Error('Required files could not be loaded');
     publishedData=await locationsResponse.json();
-    const indexText=await indexResponse.text();
-    const indexDocument=new DOMParser().parseFromString(indexText,'text/html');
-    const source=indexDocument.querySelector('#map')?.getAttribute('src');
-    if(!source)throw new Error('Map image was not found in index.html');
+    const mapText=await mapResponse.text();
+    const mapDocument=new DOMParser().parseFromString(mapText,'text/html');
+    const source=mapDocument.querySelector('#map')?.getAttribute('src');
+    if(!source)throw new Error('Map image was not found in map.html');
     const draft=localStorage.getItem(DRAFT_KEY);
     data=draft?JSON.parse(draft):clone(publishedData);
     mapImage.src=source;
@@ -368,7 +368,7 @@ async function loadFiles(){
     if(draft)showMessage('A saved draft was restored on this device.');
   }catch(error){
     console.error(error);
-    mapLoading.textContent='Unable to load the system files. Upload index.html, locations.json, and admin.html together.';
+    mapLoading.textContent='Unable to load the system files. Upload map.html, locations.json, and admin.html together.';
     showMessage(error.message,'bad');
   }
 }
